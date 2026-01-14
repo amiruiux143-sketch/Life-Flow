@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>LifeFlow: Task Master</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; overflow: hidden; color: #1e293b; }
+        .page { display: none; height: calc(100vh - 100px); overflow-y: auto; padding-bottom: 180px; scroll-behavior: smooth; }
+        .page.active { display: block; animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        #push-notif { position: fixed; top: -150px; left: 20px; right: 20px; z-index: 2000; transition: all 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55); }
+        #push-notif.active { top: 25px; }
+        .nav-btn.active { color: #6366f1; transform: scale(1.1); }
+        .glass { background: rgba(255, 255, 255, 0.92); backdrop-filter: blur(25px); border-top: 1px solid rgba(255,255,255,0.5); }
+        .world-card { background: linear-gradient(135deg, #1e293b 0%, #334155 100%); }
+        .input-box { background: white; border: 1px solid #e2e8f0; border-radius: 20px; padding: 12px 20px; transition: 0.3s; }
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 3000; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(4px); }
+        .modal.active { display: flex; }
+    </style>
+</head>
+<body class="antialiased">
+
+<div id="app" class="max-w-md mx-auto h-screen relative flex flex-col">
+    
+    <div id="push-notif" class="bg-white p-5 rounded-[2.5rem] shadow-2xl flex items-center gap-4 border border-indigo-50">
+        <div class="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center shrink-0 shadow-lg"><i class="fas fa-robot text-white"></i></div>
+        <div class="flex-1">
+            <p class="text-[10px] font-black text-indigo-600 uppercase tracking-widest">LifeFlow AI</p>
+            <p id="push-text" class="text-xs font-bold text-slate-700 leading-tight">Готов к работе!</p>
+        </div>
+    </div>
+
+    <div id="modal-food" class="modal">
+        <div class="bg-white w-full max-w-xs rounded-[2.5rem] p-8 shadow-2xl">
+            <h3 id="modal-title" class="font-black text-xl mb-4 text-slate-800">Новый продукт</h3>
+            <div id="food-inputs" class="space-y-4">
+                <input id="custom-n" type="text" placeholder="Название" class="w-full bg-slate-50 p-4 rounded-2xl outline-none font-bold">
+                <input id="custom-k" type="number" placeholder="Ккал на 100г" class="w-full bg-slate-50 p-4 rounded-2xl outline-none font-bold">
+            </div>
+            <div id="task-inputs" class="space-y-4 hidden">
+                <input id="task-n" type="text" placeholder="Что нужно сделать?" class="w-full bg-slate-50 p-4 rounded-2xl outline-none font-bold">
+            </div>
+            <div class="flex gap-2 mt-6">
+                <button onclick="closeModal()" class="flex-1 bg-slate-100 p-4 rounded-2xl font-bold">Отмена</button>
+                <button id="modal-save-btn" class="flex-1 bg-indigo-600 text-white p-4 rounded-2xl font-bold">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <header class="p-6 flex justify-between items-center z-50">
+        <div>
+            <h1 class="text-3xl font-extrabold tracking-tighter">LifeFlow<span class="text-indigo-600">.</span></h1>
+            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Привет, <span id="header-name">Друг</span></p>
+        </div>
+        <button onclick="showPage('p-notifs', this)" class="relative w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm border border-slate-100">
+            <i class="fas fa-bell text-slate-400"></i>
+            <div id="dot" class="absolute top-3 right-3 w-2 h-2 bg-red-500 rounded-full hidden"></div>
+        </button>
+    </header>
+
+    <main class="flex-1 px-6">
+        <div id="p-home" class="page active">
+            <div class="world-card rounded-[3rem] p-8 text-white mb-8 relative overflow-hidden shadow-2xl">
+                <p class="text-[10px] font-black opacity-60 uppercase tracking-widest mb-1">Остаток на сегодня</p>
+                <h2 id="kcal-main" class="text-6xl font-black tracking-tighter mb-6">0</h2>
+                <div class="flex justify-between items-end">
+                    <div><p class="text-[9px] font-bold opacity-50 uppercase">Съедено</p><p id="stat-eaten" class="text-xl font-black">0</p></div>
+                    <div class="text-right"><p class="text-[9px] font-bold opacity-50 uppercase">Цель</p><p id="stat-target" class="text-xl font-black">0</p></div>
+                </div>
+            </div>
+            <div class="flex justify-between items-center mb-4 px-2">
+                <h3 class="text-sm font-black uppercase tracking-widest text-slate-400">Твои задачи</h3>
+                <button onclick="openTaskModal()" class="text-[10px] font-black text-indigo-600">+ Новая миссия</button>
+            </div>
+            <div id="quests-list" class="space-y-3 mb-8"></div>
+            <button onclick="askAI()" class="w-full bg-slate-900 text-white p-5 rounded-[2rem] flex items-center justify-center gap-3 shadow-xl active:scale-95 transition-all"><i class="fas fa-brain text-indigo-400"></i><span class="font-bold text-sm">Анализ состояния</span></button>
+        </div>
+
+        <div id="p-food" class="page">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-black">Дневник еды</h2>
+                <button onclick="openFoodModal()" class="text-[10px] font-black text-indigo-600 bg-indigo-50 px-4 py-2 rounded-full uppercase tracking-tighter">+ Свой продукт</button>
+            </div>
+            <div class="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100 mb-6">
+                <div class="space-y-4">
+                    <div class="input-box">
+                        <label class="text-[9px] font-black text-slate-400 uppercase">Продукт</label>
+                        <select id="food-select" class="w-full font-bold outline-none bg-transparent"></select>
+                    </div>
+                    <div class="flex gap-3">
+                        <div class="input-box flex-1"><label class="text-[9px] font-black text-slate-400 uppercase">Граммы</label><input id="in-weight" type="number" placeholder="100" class="w-full font-bold outline-none"></div>
+                        <button onclick="addMeal()" class="bg-indigo-600 text-white px-8 rounded-2xl font-bold">ADD</button>
+                    </div>
+                </div>
+            </div>
+            <div id="meals-list" class="space-y-3"></div>
+        </div>
+
+        <div id="p-settings" class="page">
+            <h2 class="text-2xl font-black mb-6">Профиль</h2>
+            <div class="space-y-4">
+                <div class="input-box"><label class="text-[9px] font-black text-slate-400 uppercase">Твое имя</label><input id="u-name" type="text" class="w-full font-bold outline-none"></div>
+                <div class="grid grid-cols-3 gap-2">
+                    <div class="input-box"><label class="text-[9px] font-black text-slate-400 uppercase">Вес</label><input id="u-w" type="number" class="w-full font-bold outline-none"></div>
+                    <div class="input-box"><label class="text-[9px] font-black text-slate-400 uppercase">Рост</label><input id="u-h" type="number" class="w-full font-bold outline-none"></div>
+                    <div class="input-box"><label class="text-[9px] font-black text-slate-400 uppercase">Лет</label><input id="u-a" type="number" class="w-full font-bold outline-none"></div>
+                </div>
+                <button onclick="saveProfile()" class="w-full bg-indigo-600 text-white p-5 rounded-[2rem] font-black shadow-lg">СОХРАНИТЬ</button>
+                <hr class="border-slate-100 my-4">
+                <button onclick="logout()" class="w-full bg-red-50 text-red-500 p-5 rounded-[2rem] font-bold flex items-center justify-center gap-3">
+                    <i class="fas fa-right-from-bracket"></i><span>Сбросить всё и выйти</span>
+                </button>
+            </div>
+        </div>
+
+        <div id="p-notifs" class="page">
+            <h2 class="text-2xl font-black mb-6">История AI</h2>
+            <div id="notifs-log" class="space-y-3"></div>
+        </div>
+    </main>
+
+    <nav class="fixed bottom-6 left-6 right-6 h-20 glass rounded-[2.5rem] shadow-2xl flex justify-around items-center px-4 z-[100]">
+        <button onclick="showPage('p-home', this)" class="nav-btn active p-4"><i class="fas fa-house-user text-xl"></i></button>
+        <button onclick="showPage('p-food', this)" class="nav-btn text-slate-300 p-4"><i class="fas fa-utensils text-xl"></i></button>
+        <button onclick="showPage('p-settings', this)" class="nav-btn text-slate-300 p-4"><i class="fas fa-user-circle text-xl"></i></button>
+    </nav>
+</div>
+
+<script>
+    let state = JSON.parse(localStorage.getItem('LifeFlow_Final_V2')) || {
+        name: "Атлет", weight: 70, height: 175, age: 25, goalMult: 1,
+        target: 2000, eaten: 0, meals: [], notifs: [],
+        products: [{n: "Курица", k: 165}, {n: "Рис", k: 130}, {n: "Яйцо", k: 155}],
+        quests: [{id: 1, text: "Вода: 1.5 литра", done: false}, {id: 2, text: "Записать еду", done: false}]
+    };
+
+    function sendPush(text) {
+        const push = document.getElementById('push-notif');
+        document.getElementById('push-text').innerText = text;
+        push.classList.add('active');
+        state.notifs.unshift({ text, time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) });
+        document.getElementById('dot').classList.remove('hidden');
+        save(); setTimeout(() => push.classList.remove('active'), 4000);
+    }
+
+    function showPage(id, btn) {
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        if(btn && btn.tagName === 'BUTTON') {
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active', 'text-slate-300'));
+            btn.classList.add('active');
+        }
+        if(id === 'p-food') { renderProducts(); renderMeals(); }
+        if(id === 'p-home') renderQuests();
+        if(id === 'p-notifs') renderNotifs();
+    }
+
+    // MODALS
+    function closeModal() { document.getElementById('modal-food').classList.remove('active'); }
+    
+    function openFoodModal() {
+        document.getElementById('modal-title').innerText = "Новый продукт";
+        document.getElementById('food-inputs').classList.remove('hidden');
+        document.getElementById('task-inputs').classList.add('hidden');
+        document.getElementById('modal-save-btn').onclick = saveCustomProduct;
+        document.getElementById('modal-food').classList.add('active');
+    }
+
+    function openTaskModal() {
+        document.getElementById('modal-title').innerText = "Новая задача";
+        document.getElementById('food-inputs').classList.add('hidden');
+        document.getElementById('task-inputs').classList.remove('hidden');
+        document.getElementById('modal-save-btn').onclick = saveNewTask;
+        document.getElementById('modal-food').classList.add('active');
+    }
+
+    function saveCustomProduct() {
+        const n = document.getElementById('custom-n').value;
+        const k = parseFloat(document.getElementById('custom-k').value);
+        if(!n || !k) return;
+        state.products.push({n, k});
+        save(); renderProducts(); closeModal();
+        sendPush(`Продукт "${n}" добавлен!`);
+        document.getElementById('custom-n').value = ''; document.getElementById('custom-k').value = '';
+    }
+
+    function saveNewTask() {
+        const text = document.getElementById('task-n').value;
+        if(!text) return;
+        state.quests.push({id: Date.now(), text, done: false});
+        save(); renderQuests(); closeModal();
+        sendPush("Задача добавлена в список!");
+        document.getElementById('task-n').value = '';
+    }
+
+    function renderQuests() {
+        document.getElementById('quests-list').innerHTML = state.quests.map((q, i) => `
+            <div class="bg-white p-5 rounded-[2rem] flex items-center justify-between shadow-sm border ${q.done ? 'border-green-100 bg-green-50/30 opacity-60' : 'border-slate-50'}">
+                <div onclick="toggleQuest(${i})" class="flex items-center gap-4 flex-1 cursor-pointer">
+                    <div class="w-6 h-6 rounded-full border-2 border-indigo-500 flex items-center justify-center">${q.done ? '✓' : ''}</div>
+                    <span class="text-sm font-bold ${q.done ? 'line-through' : ''}">${q.text}</span>
+                </div>
+                <button onclick="removeQuest(${q.id})" class="text-slate-300 hover:text-red-400 p-2"><i class="fas fa-trash-can text-xs"></i></button>
+            </div>
+        `).join('');
+    }
+
+    function toggleQuest(i) {
+        state.quests[i].done = !state.quests[i].done;
+        if(state.quests[i].done) confetti({ particleCount: 30, origin: { y: 0.8 } });
+        save(); renderQuests();
+    }
+
+    function removeQuest(id) {
+        state.quests = state.quests.filter(q => q.id !== id);
+        save(); renderQuests();
+    }
+
+    function renderProducts() {
+        document.getElementById('food-select').innerHTML = state.products.map(p => `<option value="${p.k}">${p.n} (${p.k} ккал)</option>`).join('');
+    }
+
+    function addMeal() {
+        const k100 = parseFloat(document.getElementById('food-select').value);
+        const w = parseFloat(document.getElementById('in-weight').value);
+        if(!w || w <= 0) return;
+        const cal = Math.round((k100 * w) / 100);
+        state.eaten += cal;
+        state.meals.unshift({ id: Date.now(), name: document.getElementById('food-select').options[document.getElementById('food-select').selectedIndex].text.split(' (')[0], cal, time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) });
+        save(); updateUI(); renderMeals();
+    }
+
+    function removeMeal(id) {
+        const m = state.meals.find(x => x.id === id);
+        if(m) { state.eaten -= m.cal; state.meals = state.meals.filter(x => x.id !== id); save(); updateUI(); renderMeals(); }
+    }
+
+    function renderMeals() {
+        document.getElementById('meals-list').innerHTML = state.meals.map(m => `
+            <div class="bg-white p-5 rounded-[2rem] flex justify-between items-center shadow-sm border border-slate-50">
+                <div><p class="font-bold text-sm">${m.name}</p><p class="text-[9px] text-slate-400 font-black uppercase">${m.time}</p></div>
+                <div class="flex items-center gap-4">
+                    <p class="font-black text-indigo-600">+${m.cal}</p>
+                    <button onclick="removeMeal(${m.id})" class="text-slate-300 hover:text-red-400 p-2"><i class="fas fa-times-circle"></i></button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function saveProfile() {
+        state.name = document.getElementById('u-name').value || "Атлет";
+        state.weight = parseFloat(document.getElementById('u-w').value) || 70;
+        state.height = parseFloat(document.getElementById('u-h').value) || 175;
+        state.age = parseFloat(document.getElementById('u-a').value) || 25;
+        state.target = Math.round(((10 * state.weight) + (6.25 * state.height) - (5 * state.age) + 5) * 1.35);
+        save(); updateUI(); showPage('p-home', document.querySelectorAll('.nav-btn')[0]);
+        confetti({ particleCount: 150, spread: 70 });
+    }
+
+    function updateUI() {
+        document.getElementById('header-name').innerText = state.name;
+        document.getElementById('kcal-main').innerText = Math.max(state.target - state.eaten, 0);
+        document.getElementById('stat-eaten').innerText = state.eaten;
+        document.getElementById('stat-target').innerText = state.target;
+        document.getElementById('u-name').value = state.name;
+        document.getElementById('u-w').value = state.weight;
+        document.getElementById('u-h').value = state.height;
+        document.getElementById('u-a').value = state.age;
+    }
+
+    function renderNotifs() {
+        document.getElementById('dot').classList.add('hidden');
+        document.getElementById('notifs-log').innerHTML = state.notifs.map(n => `
+            <div class="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm"><p class="text-xs font-bold text-slate-700">${n.text}</p><p class="text-[9px] font-black text-indigo-400 uppercase mt-2">${n.time}</p></div>
+        `).join('');
+    }
+
+    function askAI() {
+        const d = state.target - state.eaten;
+        sendPush(d < 0 ? "Лимит превышен!" : "Всё в норме, продолжай!");
+    }
+
+    function logout() { if(confirm("Сбросить всё?")) { localStorage.clear(); location.reload(); } }
+    function save() { localStorage.setItem('LifeFlow_Final_V2', JSON.stringify(state)); }
+
+    window.onload = () => { updateUI(); renderQuests(); renderProducts(); renderMeals(); };
+</script>
+</body>
+</html>
