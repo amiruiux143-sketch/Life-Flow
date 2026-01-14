@@ -3,223 +3,241 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LifeFlow: Task Master</title>
+    <title>LifeFlow</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap');
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; overflow: hidden; color: #1e293b; }
-        .page { display: none; height: calc(100vh - 100px); overflow-y: auto; padding-bottom: 180px; scroll-behavior: smooth; }
-        .page.active { display: block; animation: fadeIn 0.3s ease-out; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; color: #1e293b; overflow-x: hidden; }
+        
+        /* Адаптивный контейнер для планшета */
+        .app-container {
+            max-width: 100%;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            margin: 0 auto;
+        }
+        @media (min-width: 768px) {
+            .app-container { max-width: 900px; }
+            .grid-tablet { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; align-items: start; }
+        }
+
+        .page { display: none; height: calc(100vh - 120px); overflow-y: auto; padding-bottom: 120px; scroll-behavior: smooth; }
+        .page.active { display: block; animation: fadeIn 0.4s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        #push-notif { position: fixed; top: -150px; left: 20px; right: 20px; z-index: 2000; transition: all 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55); }
+        
+        #push-notif {
+            position: fixed; top: -150px; left: 50%; transform: translateX(-50%);
+            width: 90%; max-width: 400px; z-index: 2000; transition: all 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
         #push-notif.active { top: 25px; }
-        .nav-btn.active { color: #6366f1; transform: scale(1.1); }
-        .glass { background: rgba(255, 255, 255, 0.92); backdrop-filter: blur(25px); border-top: 1px solid rgba(255,255,255,0.5); }
+        
+        .nav-btn.active { color: #6366f1; transform: scale(1.1); background: rgba(99, 102, 241, 0.05); border-radius: 1.5rem; }
+        .glass { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(20px); border-top: 1px solid rgba(255,255,255,0.5); }
         .world-card { background: linear-gradient(135deg, #1e293b 0%, #334155 100%); }
-        .input-box { background: white; border: 1px solid #e2e8f0; border-radius: 20px; padding: 12px 20px; transition: 0.3s; }
+        .input-box { background: white; border: 1px solid #e2e8f0; border-radius: 20px; padding: 12px 20px; }
         .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 3000; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(4px); }
         .modal.active { display: flex; }
     </style>
 </head>
 <body class="antialiased">
 
-<div id="app" class="max-w-md mx-auto h-screen relative flex flex-col">
+<div class="app-container">
     
     <div id="push-notif" class="bg-white p-5 rounded-[2.5rem] shadow-2xl flex items-center gap-4 border border-indigo-50">
         <div class="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center shrink-0 shadow-lg"><i class="fas fa-robot text-white"></i></div>
         <div class="flex-1">
             <p class="text-[10px] font-black text-indigo-600 uppercase tracking-widest">LifeFlow AI</p>
-            <p id="push-text" class="text-xs font-bold text-slate-700 leading-tight">Готов к работе!</p>
+            <p id="push-text" class="text-xs font-bold text-slate-700 leading-tight">Система готова!</p>
         </div>
     </div>
 
-    <div id="modal-food" class="modal">
-        <div class="bg-white w-full max-w-xs rounded-[2.5rem] p-8 shadow-2xl">
-            <h3 id="modal-title" class="font-black text-xl mb-4 text-slate-800">Новый продукт</h3>
-            <div id="food-inputs" class="space-y-4">
-                <input id="custom-n" type="text" placeholder="Название" class="w-full bg-slate-50 p-4 rounded-2xl outline-none font-bold">
-                <input id="custom-k" type="number" placeholder="Ккал на 100г" class="w-full bg-slate-50 p-4 rounded-2xl outline-none font-bold">
-            </div>
-            <div id="task-inputs" class="space-y-4 hidden">
-                <input id="task-n" type="text" placeholder="Что нужно сделать?" class="w-full bg-slate-50 p-4 rounded-2xl outline-none font-bold">
-            </div>
-            <div class="flex gap-2 mt-6">
-                <button onclick="closeModal()" class="flex-1 bg-slate-100 p-4 rounded-2xl font-bold">Отмена</button>
-                <button id="modal-save-btn" class="flex-1 bg-indigo-600 text-white p-4 rounded-2xl font-bold">OK</button>
+    <div id="modal-box" class="modal">
+        <div class="bg-white w-full max-w-sm rounded-[3rem] p-8 shadow-2xl">
+            <h3 id="m-title" class="font-black text-2xl mb-6">Действие</h3>
+            <div id="m-content" class="space-y-4"></div>
+            <div class="flex gap-3 mt-8">
+                <button onclick="closeModal()" class="flex-1 bg-slate-100 p-5 rounded-[1.5rem] font-bold">Отмена</button>
+                <button id="m-save" class="flex-1 bg-indigo-600 text-white p-5 rounded-[1.5rem] font-bold shadow-lg shadow-indigo-200">OK</button>
             </div>
         </div>
     </div>
 
-    <header class="p-6 flex justify-between items-center z-50">
+    <header class="p-8 flex justify-between items-center z-50">
         <div>
-            <h1 class="text-3xl font-extrabold tracking-tighter">LifeFlow<span class="text-indigo-600">.</span></h1>
-            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Привет, <span id="header-name">Друг</span></p>
+            <h1 class="text-4xl font-extrabold tracking-tighter">LifeFlow<span class="text-indigo-600">.</span></h1>
+            <p class="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-1"><span class="text-indigo-500"></span></p>
         </div>
-        <button onclick="showPage('p-notifs', this)" class="relative w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm border border-slate-100">
-            <i class="fas fa-bell text-slate-400"></i>
-            <div id="dot" class="absolute top-3 right-3 w-2 h-2 bg-red-500 rounded-full hidden"></div>
-        </button>
+        <div class="flex gap-4">
+            <button onclick="showPage('p-notifs')" class="relative w-14 h-14 bg-white rounded-2xl flex items-center justify-center shadow-sm border border-slate-100">
+                <i class="fas fa-bell text-slate-400 text-xl"></i>
+                <div id="dot" class="absolute top-4 right-4 w-2.5 h-2.5 bg-red-500 rounded-full hidden border-2 border-white"></div>
+            </button>
+        </div>
     </header>
 
-    <main class="flex-1 px-6">
+    <main class="flex-1 px-8">
         <div id="p-home" class="page active">
-            <div class="world-card rounded-[3rem] p-8 text-white mb-8 relative overflow-hidden shadow-2xl">
-                <p class="text-[10px] font-black opacity-60 uppercase tracking-widest mb-1">Остаток на сегодня</p>
-                <h2 id="kcal-main" class="text-6xl font-black tracking-tighter mb-6">0</h2>
-                <div class="flex justify-between items-end">
-                    <div><p class="text-[9px] font-bold opacity-50 uppercase">Съедено</p><p id="stat-eaten" class="text-xl font-black">0</p></div>
-                    <div class="text-right"><p class="text-[9px] font-bold opacity-50 uppercase">Цель</p><p id="stat-target" class="text-xl font-black">0</p></div>
+            <div class="grid-tablet">
+                <div>
+                    <div class="world-card rounded-[3.5rem] p-10 text-white mb-8 shadow-2xl">
+                        <p class="text-xs font-black opacity-60 uppercase tracking-widest mb-2">Остаток калорий</p>
+                        <h2 id="kcal-main" class="text-7xl font-black tracking-tighter mb-8">0</h2>
+                        <div class="flex justify-between items-end border-t border-white/10 pt-6">
+                            <div><p class="text-[10px] font-bold opacity-50 uppercase mb-1">Съедено</p><p id="stat-eaten" class="text-2xl font-black">0</p></div>
+                            <div class="text-right"><p class="text-[10px] font-bold opacity-50 uppercase mb-1">Цель</p><p id="stat-target" class="text-2xl font-black">0</p></div>
+                        </div>
+                    </div>
+                    <button onclick="askAI()" class="w-full bg-slate-900 text-white p-6 rounded-[2rem] flex items-center justify-center gap-4 shadow-xl active:scale-95 transition-all mb-8 md:mb-0">
+                        <i class="fas fa-brain text-indigo-400 text-xl"></i>
+                        <span class="font-bold">Анализ состояния AI</span>
+                    </button>
+                </div>
+
+                <div>
+                    <div class="flex justify-between items-center mb-6 px-2">
+                        <h3 class="text-lg font-black text-slate-800">Миссии на сегодня</h3>
+                        <button onclick="openTaskModal()" class="w-10 h-10 bg-indigo-600 text-white rounded-full flex items-center justify-center shadow-lg"><i class="fas fa-plus"></i></button>
+                    </div>
+                    <div id="quests-list" class="space-y-4"></div>
                 </div>
             </div>
-            <div class="flex justify-between items-center mb-4 px-2">
-                <h3 class="text-sm font-black uppercase tracking-widest text-slate-400">Твои задачи</h3>
-                <button onclick="openTaskModal()" class="text-[10px] font-black text-indigo-600">+ Новая миссия</button>
-            </div>
-            <div id="quests-list" class="space-y-3 mb-8"></div>
-            <button onclick="askAI()" class="w-full bg-slate-900 text-white p-5 rounded-[2rem] flex items-center justify-center gap-3 shadow-xl active:scale-95 transition-all"><i class="fas fa-brain text-indigo-400"></i><span class="font-bold text-sm">Анализ состояния</span></button>
         </div>
 
         <div id="p-food" class="page">
-            <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-black">Дневник еды</h2>
-                <button onclick="openFoodModal()" class="text-[10px] font-black text-indigo-600 bg-indigo-50 px-4 py-2 rounded-full uppercase tracking-tighter">+ Свой продукт</button>
-            </div>
-            <div class="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100 mb-6">
-                <div class="space-y-4">
-                    <div class="input-box">
-                        <label class="text-[9px] font-black text-slate-400 uppercase">Продукт</label>
-                        <select id="food-select" class="w-full font-bold outline-none bg-transparent"></select>
+            <div class="grid-tablet">
+                <div>
+                    <h2 class="text-3xl font-black mb-8">Добавить еду</h2>
+                    <div class="bg-white p-8 rounded-[3rem] shadow-sm border border-slate-100 mb-8">
+                        <div class="space-y-5">
+                            <div class="input-box"><label class="text-[10px] font-black text-slate-400 uppercase">Продукт</label><select id="food-select" class="w-full font-bold outline-none bg-transparent py-2"></select></div>
+                            <div class="input-box"><label class="text-[10px] font-black text-slate-400 uppercase">Граммы</label><input id="in-weight" type="number" placeholder="100" class="w-full font-bold outline-none py-2"></div>
+                            <button onclick="addMeal()" class="w-full bg-indigo-600 text-white p-5 rounded-2xl font-black shadow-lg shadow-indigo-100">ДОБАВИТЬ В ДНЕВНИК</button>
+                        </div>
                     </div>
-                    <div class="flex gap-3">
-                        <div class="input-box flex-1"><label class="text-[9px] font-black text-slate-400 uppercase">Граммы</label><input id="in-weight" type="number" placeholder="100" class="w-full font-bold outline-none"></div>
-                        <button onclick="addMeal()" class="bg-indigo-600 text-white px-8 rounded-2xl font-bold">ADD</button>
-                    </div>
+                    <button onclick="openFoodModal()" class="w-full bg-white border-2 border-dashed border-slate-200 text-slate-400 p-5 rounded-[2rem] font-bold hover:border-indigo-300 hover:text-indigo-500 transition-all">+ СОЗДАТЬ СВОЙ ПРОДУКТ</button>
+                </div>
+                <div>
+                    <h2 class="text-3xl font-black mb-8 text-slate-300">Дневник</h2>
+                    <div id="meals-list" class="space-y-4"></div>
                 </div>
             </div>
-            <div id="meals-list" class="space-y-3"></div>
         </div>
 
         <div id="p-settings" class="page">
-            <h2 class="text-2xl font-black mb-6">Профиль</h2>
-            <div class="space-y-4">
-                <div class="input-box"><label class="text-[9px] font-black text-slate-400 uppercase">Твое имя</label><input id="u-name" type="text" class="w-full font-bold outline-none"></div>
-                <div class="grid grid-cols-3 gap-2">
-                    <div class="input-box"><label class="text-[9px] font-black text-slate-400 uppercase">Вес</label><input id="u-w" type="number" class="w-full font-bold outline-none"></div>
-                    <div class="input-box"><label class="text-[9px] font-black text-slate-400 uppercase">Рост</label><input id="u-h" type="number" class="w-full font-bold outline-none"></div>
-                    <div class="input-box"><label class="text-[9px] font-black text-slate-400 uppercase">Лет</label><input id="u-a" type="number" class="w-full font-bold outline-none"></div>
+            <div class="max-w-2xl mx-auto">
+                <h2 class="text-3xl font-black mb-10 text-center">Профиль пользователя</h2>
+                <div class="bg-white p-10 rounded-[3.5rem] shadow-sm border border-slate-100 space-y-6">
+                    <div class="input-box"><label class="text-[10px] font-black text-slate-400 uppercase">Имя пользователя</label><input id="u-name" type="text" class="w-full font-bold outline-none text-xl"></div>
+                    <div class="grid grid-cols-3 gap-4">
+                        <div class="input-box"><label class="text-[10px] font-black text-slate-400 uppercase">Вес (кг)</label><input id="u-w" type="number" class="w-full font-bold outline-none text-xl"></div>
+                        <div class="input-box"><label class="text-[10px] font-black text-slate-400 uppercase">Рост (см)</label><input id="u-h" type="number" class="w-full font-bold outline-none text-xl"></div>
+                        <div class="input-box"><label class="text-[10px] font-black text-slate-400 uppercase">Возраст</label><input id="u-a" type="number" class="w-full font-bold outline-none text-xl"></div>
+                    </div>
+                    <button onclick="saveProfile()" class="w-full bg-indigo-600 text-white p-6 rounded-[2rem] font-black text-lg shadow-xl shadow-indigo-100">ОБНОВИТЬ ВСЕ ДАННЫЕ</button>
+                    <div class="pt-6">
+                        <button onclick="logout()" class="w-full text-red-400 font-bold p-4 hover:bg-red-50 rounded-2xl transition-all">Сбросить данные и выйти</button>
+                    </div>
                 </div>
-                <button onclick="saveProfile()" class="w-full bg-indigo-600 text-white p-5 rounded-[2rem] font-black shadow-lg">СОХРАНИТЬ</button>
-                <hr class="border-slate-100 my-4">
-                <button onclick="logout()" class="w-full bg-red-50 text-red-500 p-5 rounded-[2rem] font-bold flex items-center justify-center gap-3">
-                    <i class="fas fa-right-from-bracket"></i><span>Сбросить всё и выйти</span>
-                </button>
             </div>
         </div>
 
         <div id="p-notifs" class="page">
-            <h2 class="text-2xl font-black mb-6">История AI</h2>
-            <div id="notifs-log" class="space-y-3"></div>
+            <h2 class="text-3xl font-black mb-8">Лог системы</h2>
+            <div id="notifs-log" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
         </div>
     </main>
 
-    <nav class="fixed bottom-6 left-6 right-6 h-20 glass rounded-[2.5rem] shadow-2xl flex justify-around items-center px-4 z-[100]">
-        <button onclick="showPage('p-home', this)" class="nav-btn active p-4"><i class="fas fa-house-user text-xl"></i></button>
-        <button onclick="showPage('p-food', this)" class="nav-btn text-slate-300 p-4"><i class="fas fa-utensils text-xl"></i></button>
-        <button onclick="showPage('p-settings', this)" class="nav-btn text-slate-300 p-4"><i class="fas fa-user-circle text-xl"></i></button>
+    <nav class="fixed bottom-8 left-1/2 -translate-x-1/2 w-[90%] max-w-[500px] h-24 glass rounded-[3rem] shadow-2xl flex justify-around items-center px-6 z-[100] border border-white/50">
+        <button onclick="showPage('p-home', this)" class="nav-btn active flex flex-col items-center gap-1 p-4"><i class="fas fa-th-large text-2xl"></i><span class="text-[10px] font-bold uppercase">Обзор</span></button>
+        <button onclick="showPage('p-food', this)" class="nav-btn text-slate-300 flex flex-col items-center gap-1 p-4"><i class="fas fa-utensils text-2xl"></i><span class="text-[10px] font-bold uppercase">Еда</span></button>
+        <button onclick="showPage('p-settings', this)" class="nav-btn text-slate-300 flex flex-col items-center gap-1 p-4"><i class="fas fa-user-gear text-2xl"></i><span class="text-[10px] font-bold uppercase">Настройки</span></button>
     </nav>
 </div>
 
 <script>
-    let state = JSON.parse(localStorage.getItem('LifeFlow_Final_V2')) || {
-        name: "Атлет", weight: 70, height: 175, age: 25, goalMult: 1,
-        target: 2000, eaten: 0, meals: [], notifs: [],
-        products: [{n: "Курица", k: 165}, {n: "Рис", k: 130}, {n: "Яйцо", k: 155}],
-        quests: [{id: 1, text: "Вода: 1.5 литра", done: false}, {id: 2, text: "Записать еду", done: false}]
+    let state = JSON.parse(localStorage.getItem('LifeFlow_Tablet_V1')) || {
+        name: "Пользователь", weight: 70, height: 175, age: 25,
+        target: 2100, eaten: 0, meals: [], notifs: [],
+        products: [{n: "Курица", k: 165}, {n: "Рис", k: 130}, {n: "Овсянка", k: 340}],
+        quests: [{id: 1, text: "Выпить воды", done: false}, {id: 2, text: "Прогулка 30 мин", done: false}]
     };
 
+    function save() { localStorage.setItem('LifeFlow_Tablet_V1', JSON.stringify(state)); }
+
     function sendPush(text) {
-        const push = document.getElementById('push-notif');
+        const p = document.getElementById('push-notif');
         document.getElementById('push-text').innerText = text;
-        push.classList.add('active');
+        p.classList.add('active');
         state.notifs.unshift({ text, time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) });
         document.getElementById('dot').classList.remove('hidden');
-        save(); setTimeout(() => push.classList.remove('active'), 4000);
+        save(); setTimeout(() => p.classList.remove('active'), 4000);
     }
 
     function showPage(id, btn) {
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
         document.getElementById(id).classList.add('active');
-        if(btn && btn.tagName === 'BUTTON') {
+        if(btn) {
             document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active', 'text-slate-300'));
             btn.classList.add('active');
         }
-        if(id === 'p-food') { renderProducts(); renderMeals(); }
         if(id === 'p-home') renderQuests();
+        if(id === 'p-food') { renderProducts(); renderMeals(); }
         if(id === 'p-notifs') renderNotifs();
     }
 
-    // MODALS
-    function closeModal() { document.getElementById('modal-food').classList.remove('active'); }
-    
+    // MODAL LOGIC
+    const modal = document.getElementById('modal-box');
+    function closeModal() { modal.classList.remove('active'); }
+
     function openFoodModal() {
-        document.getElementById('modal-title').innerText = "Новый продукт";
-        document.getElementById('food-inputs').classList.remove('hidden');
-        document.getElementById('task-inputs').classList.add('hidden');
-        document.getElementById('modal-save-btn').onclick = saveCustomProduct;
-        document.getElementById('modal-food').classList.add('active');
+        document.getElementById('m-title').innerText = "Новый продукт";
+        document.getElementById('m-content').innerHTML = `
+            <input id="cn" type="text" placeholder="Название" class="w-full bg-slate-50 p-5 rounded-2xl outline-none font-bold">
+            <input id="ck" type="number" placeholder="Ккал на 100г" class="w-full bg-slate-50 p-5 rounded-2xl outline-none font-bold">
+        `;
+        document.getElementById('m-save').onclick = () => {
+            const n = document.getElementById('cn').value;
+            const k = parseFloat(document.getElementById('ck').value);
+            if(n && k) { state.products.push({n, k}); save(); renderProducts(); closeModal(); sendPush("Продукт сохранен!"); }
+        };
+        modal.classList.add('active');
     }
 
     function openTaskModal() {
-        document.getElementById('modal-title').innerText = "Новая задача";
-        document.getElementById('food-inputs').classList.add('hidden');
-        document.getElementById('task-inputs').classList.remove('hidden');
-        document.getElementById('modal-save-btn').onclick = saveNewTask;
-        document.getElementById('modal-food').classList.add('active');
+        document.getElementById('m-title').innerText = "Новая миссия";
+        document.getElementById('m-content').innerHTML = `
+            <input id="tn" type="text" placeholder="Что нужно сделать?" class="w-full bg-slate-50 p-5 rounded-2xl outline-none font-bold">
+        `;
+        document.getElementById('m-save').onclick = () => {
+            const t = document.getElementById('tn').value;
+            if(t) { state.quests.push({id: Date.now(), text: t, done: false}); save(); renderQuests(); closeModal(); }
+        };
+        modal.classList.add('active');
     }
 
-    function saveCustomProduct() {
-        const n = document.getElementById('custom-n').value;
-        const k = parseFloat(document.getElementById('custom-k').value);
-        if(!n || !k) return;
-        state.products.push({n, k});
-        save(); renderProducts(); closeModal();
-        sendPush(`Продукт "${n}" добавлен!`);
-        document.getElementById('custom-n').value = ''; document.getElementById('custom-k').value = '';
-    }
-
-    function saveNewTask() {
-        const text = document.getElementById('task-n').value;
-        if(!text) return;
-        state.quests.push({id: Date.now(), text, done: false});
-        save(); renderQuests(); closeModal();
-        sendPush("Задача добавлена в список!");
-        document.getElementById('task-n').value = '';
-    }
-
+    // RENDERING
     function renderQuests() {
         document.getElementById('quests-list').innerHTML = state.quests.map((q, i) => `
-            <div class="bg-white p-5 rounded-[2rem] flex items-center justify-between shadow-sm border ${q.done ? 'border-green-100 bg-green-50/30 opacity-60' : 'border-slate-50'}">
-                <div onclick="toggleQuest(${i})" class="flex items-center gap-4 flex-1 cursor-pointer">
-                    <div class="w-6 h-6 rounded-full border-2 border-indigo-500 flex items-center justify-center">${q.done ? '✓' : ''}</div>
-                    <span class="text-sm font-bold ${q.done ? 'line-through' : ''}">${q.text}</span>
+            <div class="bg-white p-6 rounded-[2.5rem] flex items-center justify-between shadow-sm border ${q.done ? 'bg-green-50/50 border-green-100' : 'border-slate-50'}">
+                <div onclick="toggleQuest(${i})" class="flex items-center gap-5 flex-1 cursor-pointer">
+                    <div class="w-8 h-8 rounded-2xl border-2 border-indigo-500 flex items-center justify-center text-indigo-500">${q.done ? '<i class="fas fa-check"></i>' : ''}</div>
+                    <span class="font-bold ${q.done ? 'line-through text-slate-400' : 'text-slate-700'}">${q.text}</span>
                 </div>
-                <button onclick="removeQuest(${q.id})" class="text-slate-300 hover:text-red-400 p-2"><i class="fas fa-trash-can text-xs"></i></button>
+                <button onclick="removeQuest(${q.id})" class="text-slate-200 hover:text-red-400 p-2"><i class="fas fa-trash-can"></i></button>
             </div>
         `).join('');
     }
 
     function toggleQuest(i) {
         state.quests[i].done = !state.quests[i].done;
-        if(state.quests[i].done) confetti({ particleCount: 30, origin: { y: 0.8 } });
+        if(state.quests[i].done) confetti({ particleCount: 40, spread: 60, origin: { y: 0.8 } });
         save(); renderQuests();
     }
 
-    function removeQuest(id) {
-        state.quests = state.quests.filter(q => q.id !== id);
-        save(); renderQuests();
-    }
+    function removeQuest(id) { state.quests = state.quests.filter(q => q.id !== id); save(); renderQuests(); }
 
     function renderProducts() {
         document.getElementById('food-select').innerHTML = state.products.map(p => `<option value="${p.k}">${p.n} (${p.k} ккал)</option>`).join('');
@@ -228,42 +246,43 @@
     function addMeal() {
         const k100 = parseFloat(document.getElementById('food-select').value);
         const w = parseFloat(document.getElementById('in-weight').value);
-        if(!w || w <= 0) return;
+        if(!w) return;
         const cal = Math.round((k100 * w) / 100);
         state.eaten += cal;
-        state.meals.unshift({ id: Date.now(), name: document.getElementById('food-select').options[document.getElementById('food-select').selectedIndex].text.split(' (')[0], cal, time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) });
+        state.meals.unshift({ id: Date.now(), n: document.getElementById('food-select').options[document.getElementById('food-select').selectedIndex].text.split(' (')[0], c: cal, t: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) });
+        document.getElementById('in-weight').value = '';
         save(); updateUI(); renderMeals();
-    }
-
-    function removeMeal(id) {
-        const m = state.meals.find(x => x.id === id);
-        if(m) { state.eaten -= m.cal; state.meals = state.meals.filter(x => x.id !== id); save(); updateUI(); renderMeals(); }
+        sendPush(`Добавлено: ${cal} ккал`);
     }
 
     function renderMeals() {
         document.getElementById('meals-list').innerHTML = state.meals.map(m => `
-            <div class="bg-white p-5 rounded-[2rem] flex justify-between items-center shadow-sm border border-slate-50">
-                <div><p class="font-bold text-sm">${m.name}</p><p class="text-[9px] text-slate-400 font-black uppercase">${m.time}</p></div>
-                <div class="flex items-center gap-4">
-                    <p class="font-black text-indigo-600">+${m.cal}</p>
-                    <button onclick="removeMeal(${m.id})" class="text-slate-300 hover:text-red-400 p-2"><i class="fas fa-times-circle"></i></button>
+            <div class="bg-white p-6 rounded-[2.5rem] flex justify-between items-center shadow-sm border border-slate-50">
+                <div><p class="font-black text-slate-800">${m.n}</p><p class="text-[10px] text-slate-400 font-bold uppercase">${m.t}</p></div>
+                <div class="flex items-center gap-5">
+                    <p class="font-black text-indigo-600 text-lg">+${m.c}</p>
+                    <button onclick="removeMeal(${m.id})" class="text-slate-200 hover:text-red-400"><i class="fas fa-circle-xmark text-xl"></i></button>
                 </div>
             </div>
         `).join('');
     }
 
+    function removeMeal(id) {
+        const m = state.meals.find(x => x.id === id);
+        if(m) { state.eaten -= m.c; state.meals = state.meals.filter(x => x.id !== id); save(); updateUI(); renderMeals(); }
+    }
+
     function saveProfile() {
-        state.name = document.getElementById('u-name').value || "Атлет";
-        state.weight = parseFloat(document.getElementById('u-w').value) || 70;
-        state.height = parseFloat(document.getElementById('u-h').value) || 175;
-        state.age = parseFloat(document.getElementById('u-a').value) || 25;
+        state.name = document.getElementById('u-name').value || state.name;
+        state.weight = parseFloat(document.getElementById('u-w').value) || state.weight;
+        state.height = parseFloat(document.getElementById('u-h').value) || state.height;
+        state.age = parseFloat(document.getElementById('u-a').value) || state.age;
         state.target = Math.round(((10 * state.weight) + (6.25 * state.height) - (5 * state.age) + 5) * 1.35);
-        save(); updateUI(); showPage('p-home', document.querySelectorAll('.nav-btn')[0]);
-        confetti({ particleCount: 150, spread: 70 });
+        save(); updateUI(); sendPush("Профиль обновлен!");
+        showPage('p-home', document.querySelectorAll('.nav-btn')[0]);
     }
 
     function updateUI() {
-        document.getElementById('header-name').innerText = state.name;
         document.getElementById('kcal-main').innerText = Math.max(state.target - state.eaten, 0);
         document.getElementById('stat-eaten').innerText = state.eaten;
         document.getElementById('stat-target').innerText = state.target;
@@ -276,17 +295,16 @@
     function renderNotifs() {
         document.getElementById('dot').classList.add('hidden');
         document.getElementById('notifs-log').innerHTML = state.notifs.map(n => `
-            <div class="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm"><p class="text-xs font-bold text-slate-700">${n.text}</p><p class="text-[9px] font-black text-indigo-400 uppercase mt-2">${n.time}</p></div>
+            <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100"><p class="font-bold text-slate-700">${n.text}</p><p class="text-[10px] font-black text-indigo-400 uppercase mt-2">${n.time}</p></div>
         `).join('');
     }
 
     function askAI() {
         const d = state.target - state.eaten;
-        sendPush(d < 0 ? "Лимит превышен!" : "Всё в норме, продолжай!");
+        sendPush(d < 0 ? "Норма превышена, время для тренировки!" : "Отличный баланс калорий!");
     }
 
-    function logout() { if(confirm("Сбросить всё?")) { localStorage.clear(); location.reload(); } }
-    function save() { localStorage.setItem('LifeFlow_Final_V2', JSON.stringify(state)); }
+    function logout() { if(confirm("Сбросить все данные?")) { localStorage.clear(); location.reload(); } }
 
     window.onload = () => { updateUI(); renderQuests(); renderProducts(); renderMeals(); };
 </script>
